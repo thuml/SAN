@@ -1,4 +1,4 @@
-SAN
+# SAN
 PyTorch implementation for [Partial Transfer Learning with Selective Adversarial Networks (CVPR 2018)](http://openaccess.thecvf.com/content_cvpr_2018/papers/Cao_Partial_Transfer_Learning_CVPR_2018_paper.pdf) 
 
 ## Prerequisites

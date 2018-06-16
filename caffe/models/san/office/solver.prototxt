@@ -1,0 +1,15 @@
+net: "./models/san/office/train.prototxt"
+#test_iter: 295 # webcam as target
+test_iter: 157 # dslr as target
+#test_iter: 958 # amazon as target
+test_interval: 500
+base_lr: 0.001
+momentum: 0.9
+lr_policy: "inv"
+gamma: 0.001
+power: 0.75
+display: 500
+max_iter: 10000
+snapshot: 5000
+snapshot_prefix: "./models/san/caffemodel/office-aw"
+solver_mode: GPU

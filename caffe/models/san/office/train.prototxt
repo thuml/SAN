@@ -1,0 +1,4293 @@
+name: "SAN"
+layer {
+  name: "source_data"
+  type: "ImageData"
+  top: "source_data"
+  top: "lp_labels"
+  image_data_param {
+    source: "./data/office/amazon_31_list.txt"
+    batch_size: 64
+    shuffle: true
+    #label_dim: 1
+    new_height: 256
+    new_width: 256
+  }
+  transform_param {
+    crop_size: 227
+    mean_file: "./data/ilsvrc12/imagenet_mean.binaryproto"
+    mirror: true
+  }
+  include: { phase: TRAIN }
+} 
+layer {
+  name: "source_domain_labels"
+  type: "DummyData"
+  top: "source_domain_labels"
+  dummy_data_param {
+    data_filler {
+      type: "constant"
+      value: 0
+    }
+    num: 64
+    channels: 1
+    height: 1
+    width: 1
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "target_data"
+  type: "ImageData"
+  top: "target_data"
+  top: "target_labels"
+  image_data_param {
+    source: "./data/office/dslr_10_list.txt"
+    batch_size: 64
+    shuffle: true
+    #label_dim: 1
+    new_height: 256
+    new_width: 256
+  }
+  transform_param {
+    crop_size: 227
+    mean_file: "./data/ilsvrc12/imagenet_mean.binaryproto"
+    mirror: true
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "target_domain_labels"
+  type: "DummyData"
+  top: "target_domain_labels"
+  dummy_data_param {
+    data_filler {
+      type: "constant"
+      value: 1
+    }
+    num: 64
+    channels: 1
+    height: 1
+    width: 1
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "target_data"
+  type: "ImageData"
+  top: "data"
+  top: "lp_labels"
+  image_data_param {
+    source: "./data/office/dslr_10_list.txt"
+    batch_size: 1
+    shuffle: false
+    #label_dim: 1
+    new_height: 256
+    new_width: 256
+  }
+  transform_param {
+    crop_size: 227
+    mean_file: "./data/ilsvrc12/imagenet_mean.binaryproto"
+    mirror: true
+  }
+  include: { phase: TEST }
+}
+
+layer {
+  name: "target_domain_labels"
+  type: "DummyData"
+  top: "dc_labels"
+  dummy_data_param {
+    data_filler {
+      type: "constant"
+      value: 1
+    }
+    num: 1
+    channels: 1
+    height: 1
+    width: 1
+  }
+  include: { phase: TEST }
+}
+
+layer {
+  name: "no_target_label"
+  type: "Silence"
+  bottom: "target_labels"
+  include: { phase:TRAIN }
+}
+layer {
+  name: "no_dc_label_in_test"
+  type: "Silence"
+  bottom: "dc_labels"
+  include: { phase:TEST }
+}
+layer {
+  name: "concat_data"
+  type: "Concat"
+  bottom: "source_data"
+  bottom: "target_data"
+  top: "data"
+  concat_param {
+    concat_dim: 0
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "concat_domain_labels"
+  type: "Concat"
+  bottom: "source_domain_labels"
+  bottom: "target_domain_labels"
+  top: "dc_labels"
+  concat_param {
+    concat_dim: 0
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "data"
+  top: "conv1"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 96
+    kernel_size: 11
+    stride: 4
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "conv1"
+  top: "conv1"
+}
+layer {
+  name: "pool1"
+  type: "Pooling"
+  bottom: "conv1"
+  top: "pool1"
+  pooling_param {
+    pool: MAX
+    kernel_size: 3
+    stride: 2
+  }
+}
+layer {
+  name: "norm1"
+  type: "LRN"
+  bottom: "pool1"
+  top: "norm1"
+  lrn_param {
+    local_size: 5
+    alpha: 0.0001
+    beta: 0.75
+  }
+}
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "norm1"
+  top: "conv2"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 256
+    pad: 2
+    kernel_size: 5
+    group: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 1
+    }
+  }
+}
+layer {
+  name: "relu2"
+  type: "ReLU"
+  bottom: "conv2"
+  top: "conv2"
+}
+layer {
+  name: "pool2"
+  type: "Pooling"
+  bottom: "conv2"
+  top: "pool2"
+  pooling_param {
+    pool: MAX
+    kernel_size: 3
+    stride: 2
+  }
+}
+layer {
+  name: "norm2"
+  type: "LRN"
+  bottom: "pool2"
+  top: "norm2"
+  lrn_param {
+    local_size: 5
+    alpha: 0.0001
+    beta: 0.75
+  }
+}
+layer {
+  name: "conv3"
+  type: "Convolution"
+  bottom: "norm2"
+  top: "conv3"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 384
+    pad: 1
+    kernel_size: 3
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "relu3"
+  type: "ReLU"
+  bottom: "conv3"
+  top: "conv3"
+}
+layer {
+  name: "conv4"
+  type: "Convolution"
+  bottom: "conv3"
+  top: "conv4"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 384
+    pad: 1
+    kernel_size: 3
+    group: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 1
+    }
+  }
+}
+layer {
+  name: "relu4"
+  type: "ReLU"
+  bottom: "conv4"
+  top: "conv4"
+}
+layer {
+  name: "conv5"
+  type: "Convolution"
+  bottom: "conv4"
+  top: "conv5"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 256
+    pad: 1
+    kernel_size: 3
+    group: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 1
+    }
+  }
+}
+layer {
+  name: "relu5"
+  type: "ReLU"
+  bottom: "conv5"
+  top: "conv5"
+}
+layer {
+  name: "pool5"
+  type: "Pooling"
+  bottom: "conv5"
+  top: "pool5"
+  pooling_param {
+    pool: MAX
+    kernel_size: 3
+    stride: 2
+  }
+}
+layer {
+  name: "fc6"
+  type: "InnerProduct"
+  bottom: "pool5"
+  top: "fc6"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "gaussian"
+      std: 0.005
+    }
+    bias_filler {
+      type: "constant"
+      value: 1
+    }
+  }
+}
+layer {
+  name: "relu6"
+  type: "ReLU"
+  bottom: "fc6"
+  top: "fc6"
+}
+layer {
+  name: "drop6"
+  type: "Dropout"
+  bottom: "fc6"
+  top: "fc6"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+layer {
+  name: "fc7"
+  type: "InnerProduct"
+  bottom: "fc6"
+  top: "fc7"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 4096
+    weight_filler {
+      type: "gaussian"
+      std: 0.005
+    }
+    bias_filler {
+      type: "constant"
+      value: 1
+    }
+  }
+}
+layer {
+  name: "relu7"
+  type: "ReLU"
+  bottom: "fc7"
+  top: "fc7"
+}
+layer {
+  name: "drop7"
+  type: "Dropout"
+  bottom: "fc7"
+  top: "fc7"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+layer {
+  name: "bottleneck"
+  type: "InnerProduct"
+  bottom: "fc7"
+  top: "bottleneck"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 256
+    weight_filler {
+      type: "gaussian"
+      std: 0.005
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.1
+    }
+  }
+}
+layer {
+  name: "lp_fc8"
+  type: "InnerProduct"
+  bottom: "bottleneck"
+  top: "features_fc8"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 31
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "slice_features_fc8"
+  type: "Slice"
+  bottom: "features_fc8"
+  top: "source_features_fc8"
+  top: "target_features_fc8"
+  slice_param {
+    slice_dim: 0
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "alias_features_fc8"
+  type: "Slice"
+  bottom: "features_fc8"
+  top: "source_features_fc8"
+  slice_param {
+    slice_dim: 0
+  }
+  include: { phase: TEST }
+}
+
+layer {
+  name: "lp_accuracy"
+  type: "Accuracy"
+  bottom: "source_features_fc8"
+  bottom: "lp_labels"
+  top: "lp_accuracy"
+  include: { phase: TEST }
+}
+layer {
+  name: "lp_loss"
+  type: "SoftmaxWithLoss"
+  bottom: "source_features_fc8"
+  bottom: "lp_labels"
+  top: "lp_loss"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "softmax_feature"
+  type: "Softmax"
+  bottom: "target_features_fc8"
+  top: "target_features_fc8s"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "entropy_grl"
+  type: "GradientScaler"
+  bottom: "target_features_fc8s"
+  top: "entropy_grl"
+  gradient_scaler_param {
+    lower_bound: 0.0
+    upper_bound: 1.0
+    alpha: 10.0
+    max_iter: 5000
+  }
+  include: {phase: TRAIN}
+}
+layer {
+  name: "entropy_loss"
+  type: "EntropyLoss"
+  bottom: "entropy_grl"
+  #bottom: "target_labels"
+  top: "entropy_loss"
+  loss_weight: -0.05
+  entropy_param {
+    threshold: 0.001
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "softmax_feature"
+  type: "Softmax"
+  bottom: "features_fc8"
+  top: "features_fc8s"
+  softmax_param{
+    temperature: 10.0
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "grl"
+  type: "GradientScaler"
+  bottom: "bottleneck"
+  top: "grl"
+  gradient_scaler_param {
+    lower_bound: 0.0
+    upper_bound: 1.0
+    alpha: 10.0
+    max_iter: 5000
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "slice_grl"
+  type: "Split"
+  bottom: "grl"
+  top: "grl0"
+  top: "grl1"
+  top: "grl2"
+  top: "grl3"
+  top: "grl4"
+  top: "grl5"
+  top: "grl6"
+  top: "grl7"
+  top: "grl8"
+  top: "grl9"
+  top: "grl10"
+  top: "grl11"
+  top: "grl12"
+  top: "grl13"
+  top: "grl14"
+  top: "grl15"
+  top: "grl16"
+  top: "grl17"
+  top: "grl18"
+  top: "grl19"
+  top: "grl20"
+  top: "grl21"
+  top: "grl22"
+  top: "grl23"
+  top: "grl24"
+  top: "grl25"
+  top: "grl26"
+  top: "grl27"
+  top: "grl28"
+  top: "grl29"
+  top: "grl30"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "aggregate_weight"
+  type: "AggregateWeight"
+  bottom: "features_fc8s"
+  top: "weight0"
+  top: "weight1"
+  top: "weight2"
+  top: "weight3"
+  top: "weight4"
+  top: "weight5"
+  top: "weight6"
+  top: "weight7"
+  top: "weight8"
+  top: "weight9"
+  top: "weight10"
+  top: "weight11"
+  top: "weight12"
+  top: "weight13"
+  top: "weight14"
+  top: "weight15"
+  top: "weight16"
+  top: "weight17"
+  top: "weight18"
+  top: "weight19"
+  top: "weight20"
+  top: "weight21"
+  top: "weight22"
+  top: "weight23"
+  top: "weight24"
+  top: "weight25"
+  top: "weight26"
+  top: "weight27"
+  top: "weight28"
+  top: "weight29"
+  top: "weight30"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip10"
+  type: "InnerProduct"
+  bottom: "grl0"
+  top: "dc_ip10"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu10"
+  type: "ReLU"
+  bottom: "dc_ip10"
+  top: "dc_ip10"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop10"
+  type: "Dropout"
+  bottom: "dc_ip10"
+  top: "dc_ip10"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip20"
+  type: "InnerProduct"
+  bottom: "dc_ip10"
+  top: "dc_ip20"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu20"
+  type: "ReLU"
+  bottom: "dc_ip20"
+  top: "dc_ip20"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop20"
+  type: "Dropout"
+  bottom: "dc_ip20"
+  top: "dc_ip20"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip30"
+  type: "InnerProduct"
+  bottom: "dc_ip20"
+  top: "dc_ip30"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss0"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip30"
+  bottom: "dc_labels"
+  bottom: "weight0"
+  top: "dc_loss0"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip11"
+  type: "InnerProduct"
+  bottom: "grl1"
+  top: "dc_ip11"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu11"
+  type: "ReLU"
+  bottom: "dc_ip11"
+  top: "dc_ip11"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop11"
+  type: "Dropout"
+  bottom: "dc_ip11"
+  top: "dc_ip11"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip21"
+  type: "InnerProduct"
+  bottom: "dc_ip11"
+  top: "dc_ip21"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu21"
+  type: "ReLU"
+  bottom: "dc_ip21"
+  top: "dc_ip21"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop21"
+  type: "Dropout"
+  bottom: "dc_ip21"
+  top: "dc_ip21"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip31"
+  type: "InnerProduct"
+  bottom: "dc_ip21"
+  top: "dc_ip31"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss1"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip31"
+  bottom: "dc_labels"
+  bottom: "weight1"
+  top: "dc_loss1"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip12"
+  type: "InnerProduct"
+  bottom: "grl2"
+  top: "dc_ip12"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu12"
+  type: "ReLU"
+  bottom: "dc_ip12"
+  top: "dc_ip12"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop12"
+  type: "Dropout"
+  bottom: "dc_ip12"
+  top: "dc_ip12"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip22"
+  type: "InnerProduct"
+  bottom: "dc_ip12"
+  top: "dc_ip22"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu22"
+  type: "ReLU"
+  bottom: "dc_ip22"
+  top: "dc_ip22"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop22"
+  type: "Dropout"
+  bottom: "dc_ip22"
+  top: "dc_ip22"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip32"
+  type: "InnerProduct"
+  bottom: "dc_ip22"
+  top: "dc_ip32"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss2"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip32"
+  bottom: "dc_labels"
+  bottom: "weight2"
+  top: "dc_loss2"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip13"
+  type: "InnerProduct"
+  bottom: "grl3"
+  top: "dc_ip13"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu13"
+  type: "ReLU"
+  bottom: "dc_ip13"
+  top: "dc_ip13"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop13"
+  type: "Dropout"
+  bottom: "dc_ip13"
+  top: "dc_ip13"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip23"
+  type: "InnerProduct"
+  bottom: "dc_ip13"
+  top: "dc_ip23"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu23"
+  type: "ReLU"
+  bottom: "dc_ip23"
+  top: "dc_ip23"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop23"
+  type: "Dropout"
+  bottom: "dc_ip23"
+  top: "dc_ip23"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip33"
+  type: "InnerProduct"
+  bottom: "dc_ip23"
+  top: "dc_ip33"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss3"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip33"
+  bottom: "dc_labels"
+  bottom: "weight3"
+  top: "dc_loss3"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip14"
+  type: "InnerProduct"
+  bottom: "grl4"
+  top: "dc_ip14"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu14"
+  type: "ReLU"
+  bottom: "dc_ip14"
+  top: "dc_ip14"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop14"
+  type: "Dropout"
+  bottom: "dc_ip14"
+  top: "dc_ip14"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip24"
+  type: "InnerProduct"
+  bottom: "dc_ip14"
+  top: "dc_ip24"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu24"
+  type: "ReLU"
+  bottom: "dc_ip24"
+  top: "dc_ip24"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop24"
+  type: "Dropout"
+  bottom: "dc_ip24"
+  top: "dc_ip24"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip34"
+  type: "InnerProduct"
+  bottom: "dc_ip24"
+  top: "dc_ip34"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss4"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip34"
+  bottom: "dc_labels"
+  bottom: "weight4"
+  top: "dc_loss4"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip15"
+  type: "InnerProduct"
+  bottom: "grl5"
+  top: "dc_ip15"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu15"
+  type: "ReLU"
+  bottom: "dc_ip15"
+  top: "dc_ip15"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop15"
+  type: "Dropout"
+  bottom: "dc_ip15"
+  top: "dc_ip15"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip25"
+  type: "InnerProduct"
+  bottom: "dc_ip15"
+  top: "dc_ip25"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu25"
+  type: "ReLU"
+  bottom: "dc_ip25"
+  top: "dc_ip25"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop25"
+  type: "Dropout"
+  bottom: "dc_ip25"
+  top: "dc_ip25"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip35"
+  type: "InnerProduct"
+  bottom: "dc_ip25"
+  top: "dc_ip35"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss5"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip35"
+  bottom: "dc_labels"
+  bottom: "weight5"
+  top: "dc_loss5"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip16"
+  type: "InnerProduct"
+  bottom: "grl6"
+  top: "dc_ip16"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu16"
+  type: "ReLU"
+  bottom: "dc_ip16"
+  top: "dc_ip16"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop16"
+  type: "Dropout"
+  bottom: "dc_ip16"
+  top: "dc_ip16"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip26"
+  type: "InnerProduct"
+  bottom: "dc_ip16"
+  top: "dc_ip26"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu26"
+  type: "ReLU"
+  bottom: "dc_ip26"
+  top: "dc_ip26"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop26"
+  type: "Dropout"
+  bottom: "dc_ip26"
+  top: "dc_ip26"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip36"
+  type: "InnerProduct"
+  bottom: "dc_ip26"
+  top: "dc_ip36"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss6"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip36"
+  bottom: "dc_labels"
+  bottom: "weight6"
+  top: "dc_loss6"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip17"
+  type: "InnerProduct"
+  bottom: "grl7"
+  top: "dc_ip17"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu17"
+  type: "ReLU"
+  bottom: "dc_ip17"
+  top: "dc_ip17"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop17"
+  type: "Dropout"
+  bottom: "dc_ip17"
+  top: "dc_ip17"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip27"
+  type: "InnerProduct"
+  bottom: "dc_ip17"
+  top: "dc_ip27"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu27"
+  type: "ReLU"
+  bottom: "dc_ip27"
+  top: "dc_ip27"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop27"
+  type: "Dropout"
+  bottom: "dc_ip27"
+  top: "dc_ip27"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip37"
+  type: "InnerProduct"
+  bottom: "dc_ip27"
+  top: "dc_ip37"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss7"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip37"
+  bottom: "dc_labels"
+  bottom: "weight7"
+  top: "dc_loss7"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip18"
+  type: "InnerProduct"
+  bottom: "grl8"
+  top: "dc_ip18"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu18"
+  type: "ReLU"
+  bottom: "dc_ip18"
+  top: "dc_ip18"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop18"
+  type: "Dropout"
+  bottom: "dc_ip18"
+  top: "dc_ip18"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip28"
+  type: "InnerProduct"
+  bottom: "dc_ip18"
+  top: "dc_ip28"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu28"
+  type: "ReLU"
+  bottom: "dc_ip28"
+  top: "dc_ip28"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop28"
+  type: "Dropout"
+  bottom: "dc_ip28"
+  top: "dc_ip28"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip38"
+  type: "InnerProduct"
+  bottom: "dc_ip28"
+  top: "dc_ip38"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss8"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip38"
+  bottom: "dc_labels"
+  bottom: "weight8"
+  top: "dc_loss8"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip19"
+  type: "InnerProduct"
+  bottom: "grl9"
+  top: "dc_ip19"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu19"
+  type: "ReLU"
+  bottom: "dc_ip19"
+  top: "dc_ip19"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop19"
+  type: "Dropout"
+  bottom: "dc_ip19"
+  top: "dc_ip19"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip29"
+  type: "InnerProduct"
+  bottom: "dc_ip19"
+  top: "dc_ip29"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu29"
+  type: "ReLU"
+  bottom: "dc_ip29"
+  top: "dc_ip29"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop29"
+  type: "Dropout"
+  bottom: "dc_ip29"
+  top: "dc_ip29"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip39"
+  type: "InnerProduct"
+  bottom: "dc_ip29"
+  top: "dc_ip39"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss9"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip39"
+  bottom: "dc_labels"
+  bottom: "weight9"
+  top: "dc_loss9"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip110"
+  type: "InnerProduct"
+  bottom: "grl10"
+  top: "dc_ip110"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu110"
+  type: "ReLU"
+  bottom: "dc_ip110"
+  top: "dc_ip110"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop110"
+  type: "Dropout"
+  bottom: "dc_ip110"
+  top: "dc_ip110"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip210"
+  type: "InnerProduct"
+  bottom: "dc_ip110"
+  top: "dc_ip210"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu210"
+  type: "ReLU"
+  bottom: "dc_ip210"
+  top: "dc_ip210"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop210"
+  type: "Dropout"
+  bottom: "dc_ip210"
+  top: "dc_ip210"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip310"
+  type: "InnerProduct"
+  bottom: "dc_ip210"
+  top: "dc_ip310"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss10"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip310"
+  bottom: "dc_labels"
+  bottom: "weight10"
+  top: "dc_loss10"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip111"
+  type: "InnerProduct"
+  bottom: "grl11"
+  top: "dc_ip111"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu111"
+  type: "ReLU"
+  bottom: "dc_ip111"
+  top: "dc_ip111"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop111"
+  type: "Dropout"
+  bottom: "dc_ip111"
+  top: "dc_ip111"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip211"
+  type: "InnerProduct"
+  bottom: "dc_ip111"
+  top: "dc_ip211"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu211"
+  type: "ReLU"
+  bottom: "dc_ip211"
+  top: "dc_ip211"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop211"
+  type: "Dropout"
+  bottom: "dc_ip211"
+  top: "dc_ip211"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip311"
+  type: "InnerProduct"
+  bottom: "dc_ip211"
+  top: "dc_ip311"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss11"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip311"
+  bottom: "dc_labels"
+  bottom: "weight11"
+  top: "dc_loss11"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip112"
+  type: "InnerProduct"
+  bottom: "grl12"
+  top: "dc_ip112"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu112"
+  type: "ReLU"
+  bottom: "dc_ip112"
+  top: "dc_ip112"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop112"
+  type: "Dropout"
+  bottom: "dc_ip112"
+  top: "dc_ip112"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip212"
+  type: "InnerProduct"
+  bottom: "dc_ip112"
+  top: "dc_ip212"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu212"
+  type: "ReLU"
+  bottom: "dc_ip212"
+  top: "dc_ip212"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop212"
+  type: "Dropout"
+  bottom: "dc_ip212"
+  top: "dc_ip212"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip312"
+  type: "InnerProduct"
+  bottom: "dc_ip212"
+  top: "dc_ip312"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss12"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip312"
+  bottom: "dc_labels"
+  bottom: "weight12"
+  top: "dc_loss12"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip113"
+  type: "InnerProduct"
+  bottom: "grl13"
+  top: "dc_ip113"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu113"
+  type: "ReLU"
+  bottom: "dc_ip113"
+  top: "dc_ip113"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop113"
+  type: "Dropout"
+  bottom: "dc_ip113"
+  top: "dc_ip113"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip213"
+  type: "InnerProduct"
+  bottom: "dc_ip113"
+  top: "dc_ip213"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu213"
+  type: "ReLU"
+  bottom: "dc_ip213"
+  top: "dc_ip213"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop213"
+  type: "Dropout"
+  bottom: "dc_ip213"
+  top: "dc_ip213"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip313"
+  type: "InnerProduct"
+  bottom: "dc_ip213"
+  top: "dc_ip313"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss13"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip313"
+  bottom: "dc_labels"
+  bottom: "weight13"
+  top: "dc_loss13"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip114"
+  type: "InnerProduct"
+  bottom: "grl14"
+  top: "dc_ip114"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu114"
+  type: "ReLU"
+  bottom: "dc_ip114"
+  top: "dc_ip114"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop114"
+  type: "Dropout"
+  bottom: "dc_ip114"
+  top: "dc_ip114"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip214"
+  type: "InnerProduct"
+  bottom: "dc_ip114"
+  top: "dc_ip214"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu214"
+  type: "ReLU"
+  bottom: "dc_ip214"
+  top: "dc_ip214"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop214"
+  type: "Dropout"
+  bottom: "dc_ip214"
+  top: "dc_ip214"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip314"
+  type: "InnerProduct"
+  bottom: "dc_ip214"
+  top: "dc_ip314"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss14"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip314"
+  bottom: "dc_labels"
+  bottom: "weight14"
+  top: "dc_loss14"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip115"
+  type: "InnerProduct"
+  bottom: "grl15"
+  top: "dc_ip115"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu115"
+  type: "ReLU"
+  bottom: "dc_ip115"
+  top: "dc_ip115"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop115"
+  type: "Dropout"
+  bottom: "dc_ip115"
+  top: "dc_ip115"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip215"
+  type: "InnerProduct"
+  bottom: "dc_ip115"
+  top: "dc_ip215"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu215"
+  type: "ReLU"
+  bottom: "dc_ip215"
+  top: "dc_ip215"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop215"
+  type: "Dropout"
+  bottom: "dc_ip215"
+  top: "dc_ip215"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip315"
+  type: "InnerProduct"
+  bottom: "dc_ip215"
+  top: "dc_ip315"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss15"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip315"
+  bottom: "dc_labels"
+  bottom: "weight15"
+  top: "dc_loss15"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip116"
+  type: "InnerProduct"
+  bottom: "grl16"
+  top: "dc_ip116"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu116"
+  type: "ReLU"
+  bottom: "dc_ip116"
+  top: "dc_ip116"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop116"
+  type: "Dropout"
+  bottom: "dc_ip116"
+  top: "dc_ip116"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip216"
+  type: "InnerProduct"
+  bottom: "dc_ip116"
+  top: "dc_ip216"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu216"
+  type: "ReLU"
+  bottom: "dc_ip216"
+  top: "dc_ip216"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop216"
+  type: "Dropout"
+  bottom: "dc_ip216"
+  top: "dc_ip216"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip316"
+  type: "InnerProduct"
+  bottom: "dc_ip216"
+  top: "dc_ip316"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss16"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip316"
+  bottom: "dc_labels"
+  bottom: "weight16"
+  top: "dc_loss16"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip117"
+  type: "InnerProduct"
+  bottom: "grl17"
+  top: "dc_ip117"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu117"
+  type: "ReLU"
+  bottom: "dc_ip117"
+  top: "dc_ip117"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop117"
+  type: "Dropout"
+  bottom: "dc_ip117"
+  top: "dc_ip117"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip217"
+  type: "InnerProduct"
+  bottom: "dc_ip117"
+  top: "dc_ip217"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu217"
+  type: "ReLU"
+  bottom: "dc_ip217"
+  top: "dc_ip217"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop217"
+  type: "Dropout"
+  bottom: "dc_ip217"
+  top: "dc_ip217"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip317"
+  type: "InnerProduct"
+  bottom: "dc_ip217"
+  top: "dc_ip317"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss17"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip317"
+  bottom: "dc_labels"
+  bottom: "weight17"
+  top: "dc_loss17"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip118"
+  type: "InnerProduct"
+  bottom: "grl18"
+  top: "dc_ip118"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu118"
+  type: "ReLU"
+  bottom: "dc_ip118"
+  top: "dc_ip118"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop118"
+  type: "Dropout"
+  bottom: "dc_ip118"
+  top: "dc_ip118"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip218"
+  type: "InnerProduct"
+  bottom: "dc_ip118"
+  top: "dc_ip218"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu218"
+  type: "ReLU"
+  bottom: "dc_ip218"
+  top: "dc_ip218"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop218"
+  type: "Dropout"
+  bottom: "dc_ip218"
+  top: "dc_ip218"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip318"
+  type: "InnerProduct"
+  bottom: "dc_ip218"
+  top: "dc_ip318"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss18"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip318"
+  bottom: "dc_labels"
+  bottom: "weight18"
+  top: "dc_loss18"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip119"
+  type: "InnerProduct"
+  bottom: "grl19"
+  top: "dc_ip119"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu119"
+  type: "ReLU"
+  bottom: "dc_ip119"
+  top: "dc_ip119"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop119"
+  type: "Dropout"
+  bottom: "dc_ip119"
+  top: "dc_ip119"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip219"
+  type: "InnerProduct"
+  bottom: "dc_ip119"
+  top: "dc_ip219"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu219"
+  type: "ReLU"
+  bottom: "dc_ip219"
+  top: "dc_ip219"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop219"
+  type: "Dropout"
+  bottom: "dc_ip219"
+  top: "dc_ip219"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip319"
+  type: "InnerProduct"
+  bottom: "dc_ip219"
+  top: "dc_ip319"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss19"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip319"
+  bottom: "dc_labels"
+  bottom: "weight19"
+  top: "dc_loss19"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip120"
+  type: "InnerProduct"
+  bottom: "grl20"
+  top: "dc_ip120"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu120"
+  type: "ReLU"
+  bottom: "dc_ip120"
+  top: "dc_ip120"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop120"
+  type: "Dropout"
+  bottom: "dc_ip120"
+  top: "dc_ip120"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip220"
+  type: "InnerProduct"
+  bottom: "dc_ip120"
+  top: "dc_ip220"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu220"
+  type: "ReLU"
+  bottom: "dc_ip220"
+  top: "dc_ip220"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop220"
+  type: "Dropout"
+  bottom: "dc_ip220"
+  top: "dc_ip220"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip320"
+  type: "InnerProduct"
+  bottom: "dc_ip220"
+  top: "dc_ip320"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss20"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip320"
+  bottom: "dc_labels"
+  bottom: "weight20"
+  top: "dc_loss20"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip121"
+  type: "InnerProduct"
+  bottom: "grl21"
+  top: "dc_ip121"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu121"
+  type: "ReLU"
+  bottom: "dc_ip121"
+  top: "dc_ip121"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop121"
+  type: "Dropout"
+  bottom: "dc_ip121"
+  top: "dc_ip121"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip221"
+  type: "InnerProduct"
+  bottom: "dc_ip121"
+  top: "dc_ip221"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu221"
+  type: "ReLU"
+  bottom: "dc_ip221"
+  top: "dc_ip221"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop221"
+  type: "Dropout"
+  bottom: "dc_ip221"
+  top: "dc_ip221"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip321"
+  type: "InnerProduct"
+  bottom: "dc_ip221"
+  top: "dc_ip321"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss21"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip321"
+  bottom: "dc_labels"
+  bottom: "weight21"
+  top: "dc_loss21"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip122"
+  type: "InnerProduct"
+  bottom: "grl22"
+  top: "dc_ip122"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu122"
+  type: "ReLU"
+  bottom: "dc_ip122"
+  top: "dc_ip122"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop122"
+  type: "Dropout"
+  bottom: "dc_ip122"
+  top: "dc_ip122"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip222"
+  type: "InnerProduct"
+  bottom: "dc_ip122"
+  top: "dc_ip222"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu222"
+  type: "ReLU"
+  bottom: "dc_ip222"
+  top: "dc_ip222"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop222"
+  type: "Dropout"
+  bottom: "dc_ip222"
+  top: "dc_ip222"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip322"
+  type: "InnerProduct"
+  bottom: "dc_ip222"
+  top: "dc_ip322"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss22"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip322"
+  bottom: "dc_labels"
+  bottom: "weight22"
+  top: "dc_loss22"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip123"
+  type: "InnerProduct"
+  bottom: "grl23"
+  top: "dc_ip123"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu123"
+  type: "ReLU"
+  bottom: "dc_ip123"
+  top: "dc_ip123"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop123"
+  type: "Dropout"
+  bottom: "dc_ip123"
+  top: "dc_ip123"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip223"
+  type: "InnerProduct"
+  bottom: "dc_ip123"
+  top: "dc_ip223"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu223"
+  type: "ReLU"
+  bottom: "dc_ip223"
+  top: "dc_ip223"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop223"
+  type: "Dropout"
+  bottom: "dc_ip223"
+  top: "dc_ip223"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip323"
+  type: "InnerProduct"
+  bottom: "dc_ip223"
+  top: "dc_ip323"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss23"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip323"
+  bottom: "dc_labels"
+  bottom: "weight23"
+  top: "dc_loss23"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip124"
+  type: "InnerProduct"
+  bottom: "grl24"
+  top: "dc_ip124"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu124"
+  type: "ReLU"
+  bottom: "dc_ip124"
+  top: "dc_ip124"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop124"
+  type: "Dropout"
+  bottom: "dc_ip124"
+  top: "dc_ip124"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip224"
+  type: "InnerProduct"
+  bottom: "dc_ip124"
+  top: "dc_ip224"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu224"
+  type: "ReLU"
+  bottom: "dc_ip224"
+  top: "dc_ip224"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop224"
+  type: "Dropout"
+  bottom: "dc_ip224"
+  top: "dc_ip224"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip324"
+  type: "InnerProduct"
+  bottom: "dc_ip224"
+  top: "dc_ip324"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss24"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip324"
+  bottom: "dc_labels"
+  bottom: "weight24"
+  top: "dc_loss24"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip125"
+  type: "InnerProduct"
+  bottom: "grl25"
+  top: "dc_ip125"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu125"
+  type: "ReLU"
+  bottom: "dc_ip125"
+  top: "dc_ip125"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop125"
+  type: "Dropout"
+  bottom: "dc_ip125"
+  top: "dc_ip125"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip225"
+  type: "InnerProduct"
+  bottom: "dc_ip125"
+  top: "dc_ip225"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu225"
+  type: "ReLU"
+  bottom: "dc_ip225"
+  top: "dc_ip225"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop225"
+  type: "Dropout"
+  bottom: "dc_ip225"
+  top: "dc_ip225"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip325"
+  type: "InnerProduct"
+  bottom: "dc_ip225"
+  top: "dc_ip325"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss25"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip325"
+  bottom: "dc_labels"
+  bottom: "weight25"
+  top: "dc_loss25"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip126"
+  type: "InnerProduct"
+  bottom: "grl26"
+  top: "dc_ip126"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu126"
+  type: "ReLU"
+  bottom: "dc_ip126"
+  top: "dc_ip126"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop126"
+  type: "Dropout"
+  bottom: "dc_ip126"
+  top: "dc_ip126"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip226"
+  type: "InnerProduct"
+  bottom: "dc_ip126"
+  top: "dc_ip226"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu226"
+  type: "ReLU"
+  bottom: "dc_ip226"
+  top: "dc_ip226"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop226"
+  type: "Dropout"
+  bottom: "dc_ip226"
+  top: "dc_ip226"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip326"
+  type: "InnerProduct"
+  bottom: "dc_ip226"
+  top: "dc_ip326"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss26"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip326"
+  bottom: "dc_labels"
+  bottom: "weight26"
+  top: "dc_loss26"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip127"
+  type: "InnerProduct"
+  bottom: "grl27"
+  top: "dc_ip127"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu127"
+  type: "ReLU"
+  bottom: "dc_ip127"
+  top: "dc_ip127"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop127"
+  type: "Dropout"
+  bottom: "dc_ip127"
+  top: "dc_ip127"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip227"
+  type: "InnerProduct"
+  bottom: "dc_ip127"
+  top: "dc_ip227"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu227"
+  type: "ReLU"
+  bottom: "dc_ip227"
+  top: "dc_ip227"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop227"
+  type: "Dropout"
+  bottom: "dc_ip227"
+  top: "dc_ip227"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip327"
+  type: "InnerProduct"
+  bottom: "dc_ip227"
+  top: "dc_ip327"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss27"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip327"
+  bottom: "dc_labels"
+  bottom: "weight27"
+  top: "dc_loss27"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip128"
+  type: "InnerProduct"
+  bottom: "grl28"
+  top: "dc_ip128"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu128"
+  type: "ReLU"
+  bottom: "dc_ip128"
+  top: "dc_ip128"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop128"
+  type: "Dropout"
+  bottom: "dc_ip128"
+  top: "dc_ip128"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip228"
+  type: "InnerProduct"
+  bottom: "dc_ip128"
+  top: "dc_ip228"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu228"
+  type: "ReLU"
+  bottom: "dc_ip228"
+  top: "dc_ip228"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop228"
+  type: "Dropout"
+  bottom: "dc_ip228"
+  top: "dc_ip228"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip328"
+  type: "InnerProduct"
+  bottom: "dc_ip228"
+  top: "dc_ip328"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss28"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip328"
+  bottom: "dc_labels"
+  bottom: "weight28"
+  top: "dc_loss28"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip129"
+  type: "InnerProduct"
+  bottom: "grl29"
+  top: "dc_ip129"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu129"
+  type: "ReLU"
+  bottom: "dc_ip129"
+  top: "dc_ip129"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop129"
+  type: "Dropout"
+  bottom: "dc_ip129"
+  top: "dc_ip129"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip229"
+  type: "InnerProduct"
+  bottom: "dc_ip129"
+  top: "dc_ip229"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu229"
+  type: "ReLU"
+  bottom: "dc_ip229"
+  top: "dc_ip229"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop229"
+  type: "Dropout"
+  bottom: "dc_ip229"
+  top: "dc_ip229"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip329"
+  type: "InnerProduct"
+  bottom: "dc_ip229"
+  top: "dc_ip329"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss29"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip329"
+  bottom: "dc_labels"
+  bottom: "weight29"
+  top: "dc_loss29"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip130"
+  type: "InnerProduct"
+  bottom: "grl30"
+  top: "dc_ip130"
+  param {
+    #name: "ip1_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip1_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu130"
+  type: "ReLU"
+  bottom: "dc_ip130"
+  top: "dc_ip130"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop130"
+  type: "Dropout"
+  bottom: "dc_ip130"
+  top: "dc_ip130"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip230"
+  type: "InnerProduct"
+  bottom: "dc_ip130"
+  top: "dc_ip230"
+  param {
+    #name: "ip2_1"
+    lr_mult: 10
+  }
+  param {
+    #name: "ip2_2"
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_relu230"
+  type: "ReLU"
+  bottom: "dc_ip230"
+  top: "dc_ip230"
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_drop230"
+  type: "Dropout"
+  bottom: "dc_ip230"
+  top: "dc_ip230"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_ip330"
+  type: "InnerProduct"
+  bottom: "dc_ip230"
+  top: "dc_ip330"
+  param {
+    lr_mult: 10
+  }
+  param {
+    lr_mult: 20
+  }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.3
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "dc_loss30"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "dc_ip330"
+  bottom: "dc_labels"
+  bottom: "weight30"
+  top: "dc_loss30"
+  loss_weight: 0.1
+  include: { phase: TRAIN }
+}
