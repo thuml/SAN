@@ -3,7 +3,7 @@ SAN Library
 
 This is the code release for ["Partial Transfer Learning with Selective Adversarial Networks" (CVPR 2018)](http://openaccess.thecvf.com/content_cvpr_2018/papers/Cao_Partial_Transfer_Learning_CVPR_2018_paper.pdf)
 
-The caffe version is under developing.
+The caffe version is in directory "caffe". Details of the codes are described in the README.md in "caffe" directory. Notes that the performance of SAN in the paper are achieved by the codes of Caffe framework.
 
 The pytorch version is in directory "pytorch". We have released the version test on PyTorch Version 0.3.1. Details of the codes are described in the README.md in "pytorch" directory.
 
