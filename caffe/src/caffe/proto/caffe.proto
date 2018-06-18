@@ -622,7 +622,6 @@ message EntropyParameter {
     optional float threshold = 1 [default = 0.001];
     optional uint32 ignore_label = 2[default = 999];
     optional float prob_pow = 3 [default = 1.0];
-    optional uint32 iter_threshold = 4 [default = 0];
 }
 
 message SinglePad {

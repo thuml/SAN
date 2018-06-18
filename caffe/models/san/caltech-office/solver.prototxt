@@ -1,6 +1,6 @@
-net: "./models/san/caltech-office/train_caltech.prototxt"
-#test_iter: 958 # amazon as target
-test_iter: 295 # webcam as target
+net: "./models/san/caltech-office/train.prototxt"
+test_iter: 958 # amazon as target
+#test_iter: 295 # webcam as target
 #test_iter: 157 # dslr as target
 test_interval: 500
 base_lr: 0.0003
@@ -11,6 +11,6 @@ power: 0.75
 display: 500
 max_iter: 20000
 snapshot: 10000
-snapshot_prefix: "./models/san/caffemodel/caltech-amazon_0.05"
+snapshot_prefix: "./models/san/caffemodel/caltech-amazon"
 solver_mode: GPU
 snapshot_after_train: false

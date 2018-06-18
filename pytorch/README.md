@@ -15,8 +15,7 @@ The lists of dataset are in [data](./data) directory. The "data/imagenet-caltech
 
 For Office-31 dataset, "name_31_list.txt"(name="amazon", "webcam", "dslr") is the source list file and "name_10_list.txt" is the target list file.
 
-For ImageNet-Caltech dataset, imagenet_1000_list.txt is the source file list for I->C and caltech_84_list.txt is the target file list. caltech_256_list.txt is the source file list for C->I and imagenet_val_84_list.txt is the target file list.
-
+For ImageNet-Caltech dataset, "imagenet_1000_list.txt" is the source file list for task "I->C" and "caltech_84_list.txt" is the target file list. "caltech_256_list.txt" is the source file list for task "C->I" and "imagenet_val_84_list.txt" is the target file list.
 
 You can also modify the list file(txt format) in ./data as you like. Each line in the list file follows the following format:
 ```

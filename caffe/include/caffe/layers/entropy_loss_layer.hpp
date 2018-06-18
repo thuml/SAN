@@ -44,7 +44,6 @@ class EntropyLossLayer : public LossLayer<Dtype> {
   float prob_pow_;
   int ignore_label_;
   Blob<Dtype> normalized_bottom_data_;
-  int iter_threshold_, iter_;
 };
 
 }
