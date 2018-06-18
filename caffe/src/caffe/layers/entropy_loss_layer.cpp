@@ -15,6 +15,9 @@ void EntropyLossLayer<Dtype>::LayerSetUp(
     threshold_ = this->layer_param_.entropy_param().threshold();
     prob_pow_ = this->layer_param_.entropy_param().prob_pow();
     loss_weight_ = this->layer_param_.loss_weight(0);
+
+    iter_threshold_ = this->layer_param_.entropy_param().iter_threshold();
+    iter_ = 0;
 }
 
 template <typename Dtype>
@@ -22,6 +25,7 @@ void EntropyLossLayer<Dtype>::Reshape(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   LossLayer<Dtype>::Reshape(bottom, top);
   normalized_bottom_data_.Reshape(1, 1, data_num_, label_num_);
+  iter_ += 1;
 }
 
 template <typename Dtype>

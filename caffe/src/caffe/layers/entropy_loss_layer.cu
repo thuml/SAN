@@ -22,6 +22,10 @@ __global__ void ForwardGPU(const int nthreads, const Dtype* prob,
 template <typename Dtype>
 void EntropyLossLayer<Dtype>::Forward_gpu(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
+
+    if (iter_ < iter_threshold_){
+        return;
+    }
     
     const Dtype* bottom_data = bottom[0]->gpu_data();
     Dtype* log_data = normalized_bottom_data_.mutable_gpu_data(); 
@@ -61,6 +65,10 @@ template <typename Dtype>
 void EntropyLossLayer<Dtype>::Backward_gpu(
     const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down,
     const vector<Blob<Dtype>*>& bottom) {
+
+    if (iter_ < iter_threshold_){
+        return;
+    }
 
   Dtype* bottom_diff = bottom[0]->mutable_gpu_diff();
   Dtype* log_data = normalized_bottom_data_.mutable_gpu_data();

@@ -1,0 +1,14 @@
+net: "./models/san/imagenet-caltech/train_caltech.prototxt"
+test_iter: 140
+test_interval: 500
+base_lr: 0.0003
+momentum: 0.9
+lr_policy: "inv"
+gamma: 0.0003
+power: 0.75
+display: 500
+max_iter: 200000
+snapshot: 10000
+snapshot_prefix: "./models/san/caffemodel/caltech"
+solver_mode: GPU
+snapshot_after_train: false
