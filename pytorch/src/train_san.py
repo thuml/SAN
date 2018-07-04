@@ -180,7 +180,7 @@ def train(config):
                                 batch_size=data_config["test"]["batch_size"], \
                                 shuffle=False, num_workers=4)
 
-    class_num = config["class_num"]
+    class_num = config["network"]["params"]["class_num"]
 
     ## set base network
     net_config = config["network"]
@@ -339,7 +339,7 @@ if __name__ == "__main__":
         config["data"] = {"source":{"list_path":args.s_dset_path, "batch_size":36}, \
                           "target":{"list_path":args.t_dset_path, "batch_size":36}, \
                           "test":{"list_path":args.t_dset_path, "batch_size":4}}
-        config["class_num"] = 31
+        config["network"]["params"]["class_num"] = 31
     elif config["dataset"] == "imagenet":
         config["data"] = {"source":{"list_path":args.s_dset_path, "batch_size":36}, \
                           "target":{"list_path":args.t_dset_path, "batch_size":36}, \
@@ -347,12 +347,12 @@ if __name__ == "__main__":
         config["loss"] = {"trade_off":1.0, "entropy_trade_off":1.0}
         config["network"]["params"]["use_bottleneck"] = False
         config["network"]["params"]["new_cls"] = False
-        config["class_num"] = 1000
+        config["network"]["params"]["class_num"] = 1000
     elif config["dataset"] == "caltech":
         config["data"] = {"source":{"list_path":args.s_dset_path, "batch_size":36}, \
                           "target":{"list_path":args.t_dset_path, "batch_size":36}, \
                           "test":{"list_path":args.t_dset_path, "batch_size":4}}
         config["loss"] = {"trade_off":1.0, "entropy_trade_off":0.1}
         config["optimizer"]["lr_param"]["init_lr"] = 0.001
-        config["class_num"] = 256
+        config["network"]["params"]["class_num"] = 256
     train(config)
