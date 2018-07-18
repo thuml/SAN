@@ -3,7 +3,8 @@ net: "./models/san/office/train.prototxt"
 test_iter: 157 # dslr as target
 #test_iter: 958 # amazon as target
 test_interval: 500
-base_lr: 0.001
+#base_lr: 0.003 # for task amazon->dslr
+base_lr: 0.001 # for other tasks
 momentum: 0.9
 lr_policy: "inv"
 gamma: 0.001
